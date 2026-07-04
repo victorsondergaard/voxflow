@@ -1,0 +1,127 @@
+name: Build VoxFlow.app
+
+# Produces a downloadable, universal (Intel + Apple Silicon) VoxFlow.app with
+# whisper-server and llama-server bundled inside Contents/Resources/bin —
+# end users never touch a terminal.
+#
+# Every push to main publishes a GitHub Release with VoxFlow.app.zip attached.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  MACOSX_DEPLOYMENT_TARGET: "13.0"
+  WHISPER_CPP_REF: master
+  LLAMA_CPP_REF: master
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: macos-15-intel   # last Intel image (available until Aug 2027)
+            metal: "OFF"             # ggml Metal is Apple Silicon-only
+          - arch: arm64
+            runner: macos-latest     # Apple Silicon
+            metal: "ON"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build whisper.cpp (whisper-server, static)
+        run: |
+          git clone --depth 1 --branch "$WHISPER_CPP_REF" https://github.com/ggerganov/whisper.cpp
+          cmake -S whisper.cpp -B whisper.cpp/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_METAL=${{ matrix.metal }} \
+            -DGGML_METAL_EMBED_LIBRARY=${{ matrix.metal }} \
+            -DWHISPER_BUILD_TESTS=OFF
+          cmake --build whisper.cpp/build --config Release -j 4 --target whisper-server
+          WS=$(find whisper.cpp/build -name whisper-server -type f -perm +111 | head -1)
+          test -n "$WS"
+          mkdir -p out/bin && cp "$WS" out/bin/whisper-server
+
+      - name: Build llama.cpp (llama-server, static)
+        run: |
+          git clone --depth 1 --branch "$LLAMA_CPP_REF" https://github.com/ggml-org/llama.cpp
+          cmake -S llama.cpp -B llama.cpp/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_METAL=${{ matrix.metal }} \
+            -DGGML_METAL_EMBED_LIBRARY=${{ matrix.metal }} \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_CURL=OFF
+          cmake --build llama.cpp/build --config Release -j 4 --target llama-server
+          LS=$(find llama.cpp/build -name llama-server -type f -perm +111 | head -1)
+          test -n "$LS"
+          cp "$LS" out/bin/llama-server
+
+      - name: Build VoxFlow
+        run: |
+          swift build -c release
+          cp .build/release/VoxFlow out/VoxFlow
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.arch }}
+          path: out/
+
+  package:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-x86_64
+          path: x86
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-arm64
+          path: arm
+
+      - name: Assemble universal VoxFlow.app
+        run: |
+          APP=dist/VoxFlow.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
+          lipo -create x86/VoxFlow arm/VoxFlow -output "$APP/Contents/MacOS/VoxFlow"
+          lipo -create x86/bin/whisper-server arm/bin/whisper-server -output "$APP/Contents/Resources/bin/whisper-server"
+          lipo -create x86/bin/llama-server  arm/bin/llama-server  -output "$APP/Contents/Resources/bin/llama-server"
+          chmod +x "$APP/Contents/MacOS/VoxFlow" "$APP/Contents/Resources/bin/"*
+          cp Resources/Info.plist "$APP/Contents/Info.plist"
+          # lipo strips signatures; arm64 slices MUST be (re-)signed to run at all
+          codesign --force --sign - "$APP/Contents/Resources/bin/whisper-server"
+          codesign --force --sign - "$APP/Contents/Resources/bin/llama-server"
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep "$APP"
+          ditto -c -k --keepParent "$APP" VoxFlow.app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoxFlow.app
+          path: VoxFlow.app.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          name: VoxFlow ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          files: VoxFlow.app.zip
+          body: |
+            **Install:** download `VoxFlow.app.zip`, unzip, drag **VoxFlow.app** into **Applications**, then open it.
+
+            **First launch on macOS:** if macOS says the app is from an unidentified developer, go to
+            **System Settings → Privacy & Security**, scroll down, and click **"Open Anyway"**
+            (this app is open-source and unsigned because Apple charges $99/yr for signing).
+
+            Then grant **Microphone** and **Accessibility** when asked, hold **Right Option (⌥)**, and speak.
+            Runs 100% on your Mac — Intel and Apple Silicon, no data ever leaves your computer.
