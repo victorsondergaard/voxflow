@@ -74,6 +74,10 @@ struct Transcriber {
         // Parenthesised sound descriptions on a line of their own: (bell dings), (music)
         result = result.replacingOccurrences(
             of: #"(?m)^\s*\([^)]*\)\s*$"#, with: "", options: .regularExpression)
+        // A pause while thinking is NOT a paragraph: whisper marks segment
+        // boundaries with newlines — flatten them into normal spaces.
+        result = result.replacingOccurrences(
+            of: #"\s*\n+\s*"#, with: " ", options: .regularExpression)
         // Collapse runs of whitespace left behind.
         result = result.replacingOccurrences(
             of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)

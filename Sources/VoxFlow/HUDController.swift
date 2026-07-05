@@ -1,14 +1,15 @@
 import AppKit
 
-/// Floating, soft rounded "pill" that appears while you dictate.
-/// Listening: waveform bars bounce with your voice (the pill also gently
-/// swells with volume). Processing: the same bars play a rolling wave as a
-/// loading animation until your text is inserted.
+/// Floating capsule that appears while you dictate: a long, slim lozenge with
+/// straight top/bottom edges and fully semicircular ends. Listening: waveform
+/// bars bounce with your voice (the capsule gently swells with volume).
+/// Processing: the same bars play a rolling wave as a loading animation.
 final class HUDController {
     private let panel: NSPanel
     private let effect: NSVisualEffectView
     private let barsView: WaveBarsView
-    private static let size = NSSize(width: 220, height: 56)
+    // Long and slim: reads as a rounded oval, not a squircle.
+    private static let size = NSSize(width: 300, height: 42)
 
     init() {
         panel = NSPanel(contentRect: NSRect(origin: .zero, size: HUDController.size),
@@ -30,14 +31,30 @@ final class HUDController {
         effect.wantsLayer = true
         effect.layer?.cornerRadius = HUDController.size.height / 2
         effect.layer?.masksToBounds = true
+        // maskImage is the reliable way to clip an NSVisualEffectView into a
+        // true capsule (layer cornerRadius alone can leave squared vibrancy).
+        effect.maskImage = HUDController.capsuleMask(size: HUDController.size)
 
-        barsView = WaveBarsView(frame: NSRect(x: 26, y: 10,
-                                              width: HUDController.size.width - 52,
-                                              height: HUDController.size.height - 20))
+        barsView = WaveBarsView(frame: NSRect(x: 30, y: 9,
+                                              width: HUDController.size.width - 60,
+                                              height: HUDController.size.height - 18))
         barsView.autoresizingMask = [.width, .height]
         effect.addSubview(barsView)
         panel.contentView = effect
         panel.alphaValue = 0
+    }
+
+    private static func capsuleMask(size: NSSize) -> NSImage {
+        let image = NSImage(size: size, flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect,
+                         xRadius: rect.height / 2,
+                         yRadius: rect.height / 2).fill()
+            return true
+        }
+        image.capInsets = NSEdgeInsets(top: size.height / 2, left: size.height / 2,
+                                       bottom: size.height / 2, right: size.height / 2)
+        return image
     }
 
     func showListening() {
@@ -56,7 +73,7 @@ final class HUDController {
         fade(to: 1)
     }
 
-    /// level 0…1 — drives the bars and a gentle "breathing" of the pill.
+    /// level 0…1 — drives the bars and a gentle "breathing" of the capsule.
     func setLevel(_ level: Float) {
         barsView.push(level: level)
         let scale = 1.0 + CGFloat(min(max(level, 0), 1)) * 0.04
@@ -100,7 +117,10 @@ final class WaveBarsView: NSView {
 
     var mode: Mode = .listening
 
-    private let barCount = 14
+    /// Soft teal — calmer than the system blue accent.
+    static let listeningColor = NSColor.systemTeal
+
+    private let barCount = 18
     private var targets: [CGFloat]
     private var displayed: [CGFloat]
     private var phase: CGFloat = 0
@@ -149,7 +169,7 @@ final class WaveBarsView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let barWidth = bounds.width / CGFloat(barCount * 2 - 1)
-        let color: NSColor = mode == .listening ? .controlAccentColor : .secondaryLabelColor
+        let color: NSColor = mode == .listening ? WaveBarsView.listeningColor : .secondaryLabelColor
         color.setFill()
         for i in 0..<barCount {
             let height = max(bounds.height * displayed[i], barWidth)

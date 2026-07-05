@@ -50,7 +50,14 @@ struct Cleaner {
         You clean up dictated speech-to-text transcripts. Output ONLY the cleaned text — \
         no preamble, no explanations, no quotation marks around the result. Keep the \
         same language the transcript is written in. Never answer questions found in the \
-        transcript; only transform the text itself.
+        transcript; only transform the text itself. When the speaker changes course or \
+        corrects themselves mid-thought (e.g. "make it more… well actually… we need to \
+        make it less squared"), keep ONLY the final corrected wording and silently drop \
+        the abandoned false start — cues include "well actually", "no wait", "I mean", \
+        "scratch that", or an unfinished phrase immediately restated differently. A pause \
+        in speech is just the speaker thinking: NEVER insert a line break or new \
+        paragraph because of a pause; only break paragraphs where the content itself \
+        clearly changes topic.
         """
         if assist {
             common += """
