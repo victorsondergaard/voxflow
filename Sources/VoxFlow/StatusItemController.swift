@@ -18,6 +18,7 @@ protocol StatusMenuDelegate: AnyObject {
     var currentError: String? { get }
     var downloadStatus: String? { get }
     var modelsAreMissing: Bool { get }
+    var updateAvailable: String? { get }
 
     func toggleCleanup()
     func toggleAssist()
@@ -30,6 +31,7 @@ protocol StatusMenuDelegate: AnyObject {
     func showPermissionsHelp()
     func showSetupHelp()
     func copyLastTranscript()
+    func openUpdatePage()
 }
 
 /// Menu bar icon + menu. Icon reflects state (SPEC R3/R5); menu is rebuilt
@@ -85,6 +87,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
         guard let delegate = delegate else { return }
+
+        // One-click update when a newer release exists
+        if let tag = delegate.updateAvailable {
+            let item = NSMenuItem(title: "Update available (\(tag)) — Download…",
+                                  action: #selector(updateAction), keyEquivalent: "")
+            item.target = self
+            menu.addItem(item)
+            menu.addItem(.separator())
+        }
 
         // Error banner (SPEC R15)
         if let error = delegate.currentError {
@@ -204,6 +215,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func toggleReadBackAction() { delegate?.toggleReadBack() }
     @objc private func speakAction() { delegate?.speakLastTranscript() }
     @objc private func downloadAction() { delegate?.startModelDownload() }
+    @objc private func updateAction() { delegate?.openUpdatePage() }
 
     @objc private func selectModelAction(_ sender: NSMenuItem) {
         guard

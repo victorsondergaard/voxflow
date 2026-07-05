@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private let inserter = TextInserter()
     private let downloader = ModelDownloader()
     private let speech = AVSpeechSynthesizer()
+    private let hud = HUDController()
+    private let updater = UpdateChecker()
 
     private var state: DictationState = .idle
     private var downloadStatusText: String?
@@ -21,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private var recordingIconWork: DispatchWorkItem?
     private var errorMessage: String?
     private var hasTranscribedOnce = false
+    private var updateAvailableTag: String?
     private(set) var lastTranscriptValue: String?
 
     private static let minHoldSeconds: TimeInterval = 0.15 // SPEC R5
@@ -38,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         hotkeyMonitor.onPress = { [weak self] in self?.hotkeyPressed() }
         hotkeyMonitor.onRelease = { [weak self] in self?.hotkeyReleased() }
 
+        recorder.onLevel = { [weak self] level in
+            self?.hud.setLevel(level)
+        }
+
         downloader.onProgress = { [weak self] text in
             self?.downloadStatusText = text
         }
@@ -53,6 +60,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
                                     + "\n\nCheck your internet connection, then choose “Download models…” from the menu again.")
             }
         }
+
+        updater.onUpdateAvailable = { [weak self] tag in
+            self?.updateAvailableTag = tag
+        }
+        updater.start()
 
         ensureAccessibilityPermission()
         startHotkeyMonitoring()
@@ -159,6 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
                 // holds shorter than 150 ms is discarded on release (SPEC R5).
                 try self.recorder.start()
                 self.state = .recording
+                self.hud.showListening() // instant feedback: the pill appears as you speak
                 let work = DispatchWorkItem { [weak self] in
                     guard let self = self, self.state == .recording else { return }
                     self.statusController.setState(.recording)
@@ -185,12 +198,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         guard heldFor >= AppDelegate.minHoldSeconds, !wav.isEmpty else {
             state = .idle
             statusController.setState(.idle)
+            hud.hide()
             return
         }
 
         guard servers.whisperPort != nil, servers.whisperRunning else {
             state = .idle
             statusController.setState(.idle)
+            hud.hide()
             errorMessage = "Transcription server is not running."
             showAlert(title: "VoxFlow",
                       text: "The transcription server is not running. Open the VoxFlow menu bar icon for details.")
@@ -199,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
 
         state = .processing
         statusController.setState(.processing)
+        hud.showProcessing() // rolling-wave loading animation while transcribing
         let language = settings.modelChoice.language
         let category = pressCategory
         // First dictation may wait on model load; afterwards the server is warm.
@@ -208,6 +224,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
             defer {
                 self.state = .idle
                 self.statusController.setState(.idle)
+                self.hud.hide()
             }
             guard let port = self.servers.whisperPort else { return }
             _ = await self.servers.waitUntilReady(port: port, timeout: readyTimeout)
@@ -270,6 +287,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     var lastTranscript: String? { lastTranscriptValue }
     var setupProblems: [String] { settings.setupProblems() }
     var currentError: String? { errorMessage }
+    var updateAvailable: String? { updateAvailableTag }
 
     var launchAtLoginEnabled: Bool {
         SMAppService.mainApp.status == .enabled
@@ -379,6 +397,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
             source, run ./setup.sh).
             """
         )
+    }
+
+    func openUpdatePage() {
+        NSWorkspace.shared.open(UpdateChecker.releasesPage)
     }
 
     func copyLastTranscript() {
