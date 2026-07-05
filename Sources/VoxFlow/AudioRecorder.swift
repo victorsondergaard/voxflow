@@ -16,6 +16,9 @@ enum AudioRecorderError: Error, LocalizedError {
 /// Captures microphone audio with AVAudioEngine and produces
 /// 16 kHz mono 16-bit PCM WAV data regardless of the device's native format (SPEC R6).
 final class AudioRecorder {
+    /// Live input level 0…1, delivered on the main queue (drives the HUD bars).
+    var onLevel: ((Float) -> Void)?
+
     private let engine = AVAudioEngine()
     private var converter: AVAudioConverter?
     private var pcmData = Data()
@@ -92,6 +95,18 @@ final class AudioRecorder {
         guard convError == nil, out.frameLength > 0, let channel = out.int16ChannelData else { return }
         pcmData.append(UnsafeRawPointer(channel[0]).assumingMemoryBound(to: UInt8.self),
                        count: Int(out.frameLength) * MemoryLayout<Int16>.size)
+
+        if let onLevel = onLevel {
+            var sum: Double = 0
+            let count = Int(out.frameLength)
+            for i in 0..<count {
+                let sample = Double(channel[0][i])
+                sum += sample * sample
+            }
+            let rms = (sum / Double(count)).squareRoot() / 32768.0
+            let level = Float(min(1.0, rms * 9.0))
+            DispatchQueue.main.async { onLevel(level) }
+        }
     }
 
     // MARK: - WAV container
