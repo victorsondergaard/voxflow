@@ -27,6 +27,11 @@ final class ServerManager {
     static let whisperBasePort = 8321
     static let llamaBasePort = 8322
 
+    /// Leave a couple of cores for the UI and the foreground app.
+    static var inferenceThreads: Int {
+        max(2, ProcessInfo.processInfo.activeProcessorCount - 2)
+    }
+
     private(set) var whisperPort: Int?
     private(set) var llamaPort: Int?
 
@@ -111,6 +116,7 @@ final class ServerManager {
             "--host", "127.0.0.1",
             "--port", String(port),
             "-l", language, // belt & braces: also sent per-request
+            "-t", String(ServerManager.inferenceThreads),
         ]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
@@ -144,6 +150,7 @@ final class ServerManager {
             "--host", "127.0.0.1",
             "--port", String(port),
             "-c", "4096",
+            "-t", String(ServerManager.inferenceThreads),
         ]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
