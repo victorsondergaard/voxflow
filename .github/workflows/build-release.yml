@@ -90,7 +90,26 @@ jobs:
           path: arm
 
       - name: Assemble universal VoxFlow.app
+        env:
+          CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
+          CERT_PASS: ${{ secrets.SIGNING_CERT_PASSWORD }}
         run: |
+          # Stable signing identity (free, self-signed): macOS then recognizes
+          # every update as the same app, so permissions stick across updates.
+          SIGN_ID="-"
+          if [ -n "$CERT_P12" ]; then
+            echo "$CERT_P12" | base64 -d > cert.p12
+            security create-keychain -p tmpbuildpass build.keychain
+            security set-keychain-settings -lut 21600 build.keychain
+            security unlock-keychain -p tmpbuildpass build.keychain
+            security import cert.p12 -k build.keychain -P "$CERT_PASS" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple: -s -k tmpbuildpass build.keychain >/dev/null
+            security list-keychains -d user -s build.keychain login.keychain
+            SIGN_ID="VoxFlow Signing"
+            echo "Signing with stable certificate"
+          else
+            echo "No signing secrets found - falling back to ad-hoc signature"
+          fi
           APP=dist/VoxFlow.app
           mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bin"
           lipo -create x86/VoxFlow arm/VoxFlow -output "$APP/Contents/MacOS/VoxFlow"
@@ -102,9 +121,9 @@ jobs:
           VERSION="${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}"
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION#v}" "$APP/Contents/Info.plist"
           # lipo strips signatures; arm64 slices MUST be (re-)signed to run at all
-          codesign --force --sign - "$APP/Contents/Resources/bin/whisper-server"
-          codesign --force --sign - "$APP/Contents/Resources/bin/llama-server"
-          codesign --force --deep --sign - "$APP"
+          codesign --force --sign "$SIGN_ID" "$APP/Contents/Resources/bin/whisper-server"
+          codesign --force --sign "$SIGN_ID" "$APP/Contents/Resources/bin/llama-server"
+          codesign --force --deep --sign "$SIGN_ID" "$APP"
           codesign --verify --deep "$APP"
           ditto -c -k --keepParent "$APP" VoxFlow.app.zip
 

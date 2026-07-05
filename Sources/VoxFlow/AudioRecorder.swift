@@ -103,15 +103,29 @@ final class AudioRecorder {
                        count: Int(out.frameLength) * MemoryLayout<Int16>.size)
 
         if let onLevel = onLevel {
-            var sum: Double = 0
-            let count = Int(out.frameLength)
-            for i in 0..<count {
-                let sample = Double(channel[0][i])
-                sum += sample * sample
+            // Emit one level per ~32 ms window so the HUD scrolls like a real
+            // waveform instead of giving one sluggish bounce per audio buffer.
+            let total = Int(out.frameLength)
+            var index = 0
+            while index < total {
+                let count = min(512, total - index)
+                var sum: Double = 0
+                for i in index..<(index + count) {
+                    let sample = Double(channel[0][i])
+                    sum += sample * sample
+                }
+                let rms = (sum / Double(count)).squareRoot() / 32768.0
+                // Square-root curve makes normal speech fill the bars while
+                // shouting clips at the top; below the gate is just room noise.
+                let level: Float
+                if rms < 0.003 {
+                    level = 0.04
+                } else {
+                    level = Float(min(1.0, (rms * 14.0).squareRoot()))
+                }
+                DispatchQueue.main.async { onLevel(level) }
+                index += count
             }
-            let rms = (sum / Double(count)).squareRoot() / 32768.0
-            let level = Float(min(1.0, rms * 9.0))
-            DispatchQueue.main.async { onLevel(level) }
         }
     }
 
