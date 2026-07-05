@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private var pressDate: Date?
     private var pressCategory: AppCategory = .general
     private var recordingIconWork: DispatchWorkItem?
+    private var trustPollTimer: Timer?
     private var errorMessage: String?
     private var hasTranscribedOnce = false
     private var updateAvailableTag: String?
@@ -92,13 +93,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         let promptKey = "AXTrustedCheckOptionPrompt"
         let options = [promptKey: true] as CFDictionary
         if !AXIsProcessTrustedWithOptions(options) {
-            errorMessage = "Grant Accessibility access (System Settings → Privacy & Security → Accessibility), then relaunch."
+            errorMessage = "Grant Accessibility access (System Settings → Privacy & Security → Accessibility) — VoxFlow will notice automatically."
+            startTrustPolling()
         }
+    }
+
+    /// No relaunch needed: poll until the user flips the Accessibility toggle,
+    /// then (re)create the event tap and clear the banner. Also heals the case
+    /// where an app update invalidated a previous grant (ad-hoc signatures
+    /// change every build, so macOS sees each update as a new app).
+    private func startTrustPolling() {
+        trustPollTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            guard let self = self, AXIsProcessTrusted() else { return }
+            self.trustPollTimer?.invalidate()
+            self.trustPollTimer = nil
+            self.hotkeyMonitor.stop()
+            if self.hotkeyMonitor.start() {
+                self.errorMessage = nil
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        trustPollTimer = timer
     }
 
     private func startHotkeyMonitoring() {
         if !hotkeyMonitor.start() {
-            errorMessage = "Hotkey unavailable — grant Accessibility access, then relaunch."
+            errorMessage = "Hotkey unavailable — grant Accessibility access; VoxFlow will notice automatically."
+            startTrustPolling()
         }
     }
 
