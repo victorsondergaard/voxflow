@@ -117,6 +117,7 @@ final class ServerManager {
             "--port", String(port),
             "-l", language, // belt & braces: also sent per-request
             "-t", String(ServerManager.inferenceThreads),
+            "-bs", "5", // beam search: fewer missed words than greedy decoding
         ]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
