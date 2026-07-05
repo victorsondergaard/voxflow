@@ -148,14 +148,14 @@ final class WaveBarsView: NSView {
     func push(level: Float) {
         let clamped = CGFloat(min(max(level, 0), 1))
         targets.removeFirst()
-        targets.append(max(0.1, clamped))
+        targets.append(max(0.06, clamped))
     }
 
     private func tick() {
         switch mode {
         case .listening:
             for i in 0..<barCount {
-                displayed[i] += (targets[i] - displayed[i]) * 0.45
+                displayed[i] += (targets[i] - displayed[i]) * 0.65
             }
         case .processing:
             phase += 0.22

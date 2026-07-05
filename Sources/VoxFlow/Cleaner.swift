@@ -18,7 +18,7 @@ struct Cleaner {
 
         let payload: [String: Any] = [
             "model": "local",
-            "temperature": 0.2,
+            "temperature": 0.1,
             "max_tokens": 2048,
             "messages": [
                 ["role": "system", "content": Cleaner.systemPrompt(for: category, assist: assist)],
@@ -54,7 +54,12 @@ struct Cleaner {
         corrects themselves mid-thought (e.g. "make it more… well actually… we need to \
         make it less squared"), keep ONLY the final corrected wording and silently drop \
         the abandoned false start — cues include "well actually", "no wait", "I mean", \
-        "scratch that", or an unfinished phrase immediately restated differently. A pause \
+        "scratch that", or an unfinished phrase immediately restated differently. \
+        Example input: "make it more... well actually... we need to make it less squared" \
+        Example output: "We need to make it less squared." \
+        Example input: "send it on Monday, no wait, send it Tuesday morning" \
+        Example output: "Send it Tuesday morning." \
+        A pause \
         in speech is just the speaker thinking: NEVER insert a line break or new \
         paragraph because of a pause; only break paragraphs where the content itself \
         clearly changes topic.
