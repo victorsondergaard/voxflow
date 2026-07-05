@@ -114,8 +114,18 @@ final class Settings {
         set { defaults.set(newValue.rawValue, forKey: Key.hotkey) }
     }
 
+    /// Default depends on the Mac: Apple Silicon flies through the big model;
+    /// Intel gets the fast English model so dictation feels instant.
+    static var defaultModelChoice: ModelChoice {
+        #if arch(arm64)
+        return .highAccuracy
+        #else
+        return .englishFast
+        #endif
+    }
+
     var modelChoice: ModelChoice {
-        get { ModelChoice(rawValue: defaults.string(forKey: Key.model) ?? "") ?? .highAccuracy }
+        get { ModelChoice(rawValue: defaults.string(forKey: Key.model) ?? "") ?? Settings.defaultModelChoice }
         set { defaults.set(newValue.rawValue, forKey: Key.model) }
     }
 
