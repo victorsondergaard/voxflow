@@ -71,7 +71,13 @@ final class AudioRecorder {
         }
         converter = nil
         guard !samples.isEmpty else { return Data() }
-        return AudioRecorder.wavFile(fromPCM: samples, sampleRate: 16000, channels: 1, bitsPerSample: 16)
+        // Pad 0.3 s of silence on both ends: whisper is much better at catching
+        // the first and last words when they aren't flush against the clip edge.
+        let pad = Data(count: 4800 * MemoryLayout<Int16>.size)
+        var padded = pad
+        padded.append(samples)
+        padded.append(pad)
+        return AudioRecorder.wavFile(fromPCM: padded, sampleRate: 16000, channels: 1, bitsPerSample: 16)
     }
 
     // MARK: - Conversion

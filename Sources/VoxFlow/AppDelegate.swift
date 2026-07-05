@@ -214,10 +214,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         pressDate = nil
 
         let heldFor = Date().timeIntervalSince(pressed)
-        let wav = recorder.stop()
 
         // Accidental tap: discard entirely (SPEC R5).
-        guard heldFor >= AppDelegate.minHoldSeconds, !wav.isEmpty else {
+        guard heldFor >= AppDelegate.minHoldSeconds else {
+            _ = recorder.stop()
+            state = .idle
+            statusController.setState(.idle)
+            hud.hide()
+            return
+        }
+
+        // Keep capturing a short tail so a word finishing exactly on key-release
+        // isn't cut mid-syllable, then hand off to transcription.
+        state = .processing
+        statusController.setState(.processing)
+        hud.showProcessing() // rolling-wave loading animation while transcribing
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.finishDictation()
+        }
+    }
+
+    private func finishDictation() {
+        let wav = recorder.stop()
+        guard !wav.isEmpty else {
             state = .idle
             statusController.setState(.idle)
             hud.hide()
@@ -234,9 +253,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
             return
         }
 
-        state = .processing
-        statusController.setState(.processing)
-        hud.showProcessing() // rolling-wave loading animation while transcribing
         let language = settings.modelChoice.language
         let category = pressCategory
         // First dictation may wait on model load; afterwards the server is warm.
