@@ -39,6 +39,7 @@ protocol StatusMenuDelegate: AnyObject {
     func toggleReadSelection()
     func stopSpeaking()
     func startDocumentOCR()
+    func readScreenArea()
 }
 
 /// Menu bar icon + menu. Icon reflects state (SPEC R3/R5); menu is rebuilt
@@ -189,6 +190,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         selection.toolTip = "Select text in any app, then press Control-Option-R — VoxFlow reads it aloud. Trigger again to stop."
         menu.addItem(selection)
 
+        let screenArea = NSMenuItem(title: "Read a Screen Area Aloud  (⌃⌥S)",
+                                    action: #selector(screenAreaAction), keyEquivalent: "")
+        screenArea.target = self
+        screenArea.toolTip = "Drag a rectangle over ANY text on screen — even where it can't be selected (browsers, images, videos) — and VoxFlow reads it aloud."
+        menu.addItem(screenArea)
+
         if let ocrStatus = delegate.ocrStatus {
             let item = NSMenuItem(title: ocrStatus, action: nil, keyEquivalent: "")
             item.isEnabled = false
@@ -260,6 +267,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func toggleReadSelectionAction() { delegate?.toggleReadSelection() }
     @objc private func stopSpeakingAction() { delegate?.stopSpeaking() }
     @objc private func ocrAction() { delegate?.startDocumentOCR() }
+    @objc private func screenAreaAction() { delegate?.readScreenArea() }
 
     @objc private func selectModelAction(_ sender: NSMenuItem) {
         guard

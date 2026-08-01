@@ -44,6 +44,7 @@ VoxFlow was built with neurodivergent writers in mind:
 - **Speak Last Dictation** (menu): re-hear the last thing it typed, anytime.
 - **Read Selected Text** (toggleable in the menu): select text in ANY app and press **⌃⌥R** (Control-Option-R) — VoxFlow reads it aloud; trigger again to stop. Also available by right-clicking the selection → **Services → Read Aloud with VoxFlow** (you can give that a custom shortcut in System Settings → Keyboard → Shortcuts → Services).
 - **Read a PDF or Image Aloud (OCR)** (menu): pick any PDF or picture — VoxFlow extracts the text entirely on your Mac (Apple's on-device Vision OCR, no downloads, nothing uploaded), copies it to your clipboard, and reads it aloud. Scanned documents and photos of text both work.
+- **Read a Screen Area Aloud** (menu or **⌃⌥S**): your cursor becomes a crosshair — drag a box over ANY text on screen, even where it can't be selected (web pages, images, videos, locked PDFs), and VoxFlow OCRs it on-device and reads it aloud. First use asks for the Screen Recording permission; press Esc to cancel a capture.
 - No timers, no flashing UI, nothing to configure before speaking: hold one key, talk, release.
 
 ## Everything in the menu

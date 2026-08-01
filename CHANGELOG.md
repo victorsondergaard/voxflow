@@ -19,6 +19,9 @@ the source to any point in this history.
   PDFs, scans and photos of text — extracted text is copied to the clipboard
   and read aloud. Architecture keeps a seam for a heavyweight OCR model
   (e.g. baidu/Unlimited-OCR) as an optional future engine on powerful Macs.
+- **Read a Screen Area Aloud (⌃⌥S)**: crosshair region capture → on-device
+  OCR → spoken aloud. Reads text that cannot be selected — browsers, images,
+  videos, locked PDFs. (Uses macOS Screen Recording permission.)
 - **One-click updates**: "Update available — Install…" now downloads, swaps
   and relaunches the app automatically (fallback: Releases page).
 - CHANGELOG.md added (this file).
