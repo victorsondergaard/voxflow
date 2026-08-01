@@ -93,6 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         selectionReader.onText = { [weak self] text in
             self?.speak(text)
         }
+        selectionReader.onScreenArea = { [weak self] in
+            self?.readScreenArea()
+        }
         selectionReader.start()
         NSApp.servicesProvider = selectionReader
         NSUpdateDynamicServices()
@@ -400,6 +403,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     func stopSpeaking() {
         if speech.isSpeaking {
             speech.stopSpeaking(at: .immediate)
+        }
+    }
+
+    /// Crosshair region capture → on-device OCR → speak. Works where text
+    /// can't be selected (browsers, images, videos). Esc cancels.
+    func readScreenArea() {
+        guard ocrStatusText == nil else { return }
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("voxflow-screen-\(UUID().uuidString).png")
+        let capture = Process()
+        capture.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        capture.arguments = ["-i", "-x", tmp.path] // interactive region, no shutter sound
+        capture.terminationHandler = { [weak self] _ in
+            DispatchQueue.main.async { self?.finishScreenOCR(tmp: tmp) }
+        }
+        do {
+            try capture.run()
+        } catch {
+            showAlert(title: "Screen capture failed", text: error.localizedDescription)
+        }
+    }
+
+    private func finishScreenOCR(tmp: URL) {
+        // No file = the user pressed Esc, or Screen Recording isn't allowed yet.
+        guard FileManager.default.fileExists(atPath: tmp.path) else { return }
+        ocrStatusText = "Reading screen area…"
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+            defer { try? FileManager.default.removeItem(at: tmp) }
+            do {
+                let text = try OCRService.extractText(from: tmp) { _ in }
+                DispatchQueue.main.async {
+                    self.ocrStatusText = nil
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(text, forType: .string)
+                    self.lastTranscriptValue = text
+                    self.speak(text)
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.ocrStatusText = nil
+                    self.showAlert(title: "Screen OCR failed",
+                                   text: error.localizedDescription
+                                       + "\n\nIf the capture stayed empty, allow Screen Recording for VoxFlow in System Settings → Privacy & Security → Screen Recording.")
+                }
+            }
         }
     }
 
