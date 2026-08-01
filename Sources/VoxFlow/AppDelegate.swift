@@ -487,6 +487,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         }
     }
 
+    /// Scanned PDF/image → searchable PDF with an invisible, word-aligned
+    /// text layer (selection, search, copy and read-aloud all work).
+    func makeSearchablePDF() {
+        guard ocrStatusText == nil else { return }
+        let openPanel = NSOpenPanel()
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.allowedFileTypes = OCRService.supportedExtensions
+        openPanel.message = "Choose a scanned PDF or an image — VoxFlow will save a copy whose text is selectable and searchable (all on this Mac)."
+        NSApp.activate(ignoringOtherApps: true)
+        openPanel.begin { [weak self] response in
+            guard let self = self, response == .OK, let input = openPanel.url else { return }
+            let savePanel = NSSavePanel()
+            savePanel.allowedFileTypes = ["pdf"]
+            savePanel.nameFieldStringValue = input.deletingPathExtension().lastPathComponent + " (searchable).pdf"
+            savePanel.begin { saveResponse in
+                guard saveResponse == .OK, let output = savePanel.url else { return }
+                self.ocrStatusText = "Making searchable PDF…"
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        try SearchablePDFExporter.export(from: input, to: output) { status in
+                            DispatchQueue.main.async {
+                                self.ocrStatusText = "Searchable PDF: " + status
+                            }
+                        }
+                        DispatchQueue.main.async {
+                            self.ocrStatusText = nil
+                            NSWorkspace.shared.activateFileViewerSelecting([output])
+                        }
+                    } catch {
+                        DispatchQueue.main.async {
+                            self.ocrStatusText = nil
+                            self.showAlert(title: "Searchable PDF failed", text: error.localizedDescription)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func speakLastTranscript() {
         guard let transcript = lastTranscriptValue else { return }
         speak(transcript)
