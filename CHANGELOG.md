@@ -22,6 +22,9 @@ the source to any point in this history.
 - **Read a Screen Area Aloud (⌃⌥S)**: crosshair region capture → on-device
   OCR → spoken aloud. Reads text that cannot be selected — browsers, images,
   videos, locked PDFs. (Uses macOS Screen Recording permission.)
+- **Make a Searchable PDF (OCR)**: scanned PDF/image in → pixel-identical PDF
+  out with an invisible, word-aligned text layer (select, search, copy,
+  read-aloud). Pages that already have text pass through untouched.
 - **One-click updates**: "Update available — Install…" now downloads, swaps
   and relaunches the app automatically (fallback: Releases page).
 - CHANGELOG.md added (this file).
