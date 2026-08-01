@@ -40,6 +40,7 @@ protocol StatusMenuDelegate: AnyObject {
     func stopSpeaking()
     func startDocumentOCR()
     func readScreenArea()
+    func makeSearchablePDF()
 }
 
 /// Menu bar icon + menu. Icon reflects state (SPEC R3/R5); menu is rebuilt
@@ -206,6 +207,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             ocr.target = self
             ocr.toolTip = "On-device OCR: extracts the text (also copied to your clipboard) and reads it aloud."
             menu.addItem(ocr)
+
+            let searchable = NSMenuItem(title: "Make a Searchable PDF (OCR)…",
+                                        action: #selector(searchablePDFAction), keyEquivalent: "")
+            searchable.target = self
+            searchable.toolTip = "Turns a scanned PDF or image into a PDF whose text can be selected, searched and copied — the pages look identical."
+            menu.addItem(searchable)
         }
 
         if delegate.isSpeaking {
@@ -268,6 +275,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func stopSpeakingAction() { delegate?.stopSpeaking() }
     @objc private func ocrAction() { delegate?.startDocumentOCR() }
     @objc private func screenAreaAction() { delegate?.readScreenArea() }
+    @objc private func searchablePDFAction() { delegate?.makeSearchablePDF() }
 
     @objc private func selectModelAction(_ sender: NSMenuItem) {
         guard
