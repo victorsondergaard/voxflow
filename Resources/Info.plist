@@ -14,6 +14,8 @@
 	<string>VoxFlow</string>
 	<key>CFBundleDisplayName</key>
 	<string>VoxFlow</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

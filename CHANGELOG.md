@@ -22,6 +22,9 @@ the source to any point in this history.
 - **One-click updates**: "Update available — Install…" now downloads, swaps
   and relaunches the app automatically (fallback: Releases page).
 - CHANGELOG.md added (this file).
+- App icon: VoxFlow finally has a face — the teal waveform capsule on an
+  ocean gradient, drawn programmatically at build time (versioned as code,
+  no binary assets in the repo).
 
 ## v1.0.14 — first signed release
 
