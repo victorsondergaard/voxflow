@@ -19,11 +19,15 @@ final class SelectionReader: NSObject {
     var isEnabled: (() -> Bool)?
     /// If true is returned, the trigger only stops current speech.
     var stopIfSpeaking: (() -> Bool)?
+    /// ⌃⌥S — capture a screen region and OCR-read it (works where text
+    /// can't be selected: browsers, images, videos, locked PDFs).
+    var onScreenArea: (() -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
 
     private static let rKeyCode: Int64 = 15
+    private static let sKeyCode: Int64 = 1
 
     // MARK: - Global hotkey (⌃⌥R)
 
@@ -76,14 +80,22 @@ final class SelectionReader: NSObject {
         let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
         let flags = event.flags
         guard
-            keyCode == SelectionReader.rKeyCode,
+            keyCode == SelectionReader.rKeyCode || keyCode == SelectionReader.sKeyCode,
             flags.contains(.maskControl),
             flags.contains(.maskAlternate),
             !flags.contains(.maskCommand)
         else {
             return Unmanaged.passUnretained(event)
         }
-        DispatchQueue.main.async { [weak self] in self?.triggered() }
+        if keyCode == SelectionReader.sKeyCode {
+            DispatchQueue.main.async { [weak self] in
+                guard self?.isEnabled?() ?? true else { return }
+                if self?.stopIfSpeaking?() ?? false { return }
+                self?.onScreenArea?()
+            }
+        } else {
+            DispatchQueue.main.async { [weak self] in self?.triggered() }
+        }
         return nil // consume the keystroke
     }
 
