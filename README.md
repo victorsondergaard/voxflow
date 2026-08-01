@@ -42,6 +42,8 @@ VoxFlow was built with neurodivergent writers in mind:
 - **Prompt structuring:** when you dictate into an AI app (Claude, ChatGPT, Cursor, Perplexity…), your speech is organized into a clear, well-formatted prompt — paragraphs, bullets where you listed things — with every detail kept. Emails get a light polish only; chat messages stay casual. VoxFlow detects which app you're in automatically.
 - **Read Back After Insert** (menu toggle): VoxFlow speaks the final text aloud so you can proofread by ear instead of eye.
 - **Speak Last Dictation** (menu): re-hear the last thing it typed, anytime.
+- **Read Selected Text** (toggleable in the menu): select text in ANY app and press **⌃⌥R** (Control-Option-R) — VoxFlow reads it aloud; trigger again to stop. Also available by right-clicking the selection → **Services → Read Aloud with VoxFlow** (you can give that a custom shortcut in System Settings → Keyboard → Shortcuts → Services).
+- **Read a PDF or Image Aloud (OCR)** (menu): pick any PDF or picture — VoxFlow extracts the text entirely on your Mac (Apple's on-device Vision OCR, no downloads, nothing uploaded), copies it to your clipboard, and reads it aloud. Scanned documents and photos of text both work.
 - No timers, no flashing UI, nothing to configure before speaking: hold one key, talk, release.
 
 ## Everything in the menu

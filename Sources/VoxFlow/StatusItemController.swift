@@ -19,6 +19,9 @@ protocol StatusMenuDelegate: AnyObject {
     var downloadStatus: String? { get }
     var modelsAreMissing: Bool { get }
     var updateAvailable: String? { get }
+    var readSelectionEnabled: Bool { get }
+    var isSpeaking: Bool { get }
+    var ocrStatus: String? { get }
 
     func toggleCleanup()
     func toggleAssist()
@@ -32,6 +35,9 @@ protocol StatusMenuDelegate: AnyObject {
     func showSetupHelp()
     func copyLastTranscript()
     func openUpdatePage()
+    func toggleReadSelection()
+    func stopSpeaking()
+    func startDocumentOCR()
 }
 
 /// Menu bar icon + menu. Icon reflects state (SPEC R3/R5); menu is rebuilt
@@ -166,6 +172,34 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             menu.addItem(speak)
         }
 
+        menu.addItem(.separator())
+
+        // Reading tools (dyslexia accessibility): selection + documents
+        let selection = NSMenuItem(title: "Read Selected Text  (⌃⌥R or right-click ▸ Services)",
+                                   action: #selector(toggleReadSelectionAction), keyEquivalent: "")
+        selection.target = self
+        selection.state = delegate.readSelectionEnabled ? .on : .off
+        selection.toolTip = "Select text in any app, then press Control-Option-R — VoxFlow reads it aloud. Trigger again to stop."
+        menu.addItem(selection)
+
+        if let ocrStatus = delegate.ocrStatus {
+            let item = NSMenuItem(title: ocrStatus, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+        } else {
+            let ocr = NSMenuItem(title: "Read a PDF or Image Aloud (OCR)…",
+                                 action: #selector(ocrAction), keyEquivalent: "")
+            ocr.target = self
+            ocr.toolTip = "On-device OCR: extracts the text (also copied to your clipboard) and reads it aloud."
+            menu.addItem(ocr)
+        }
+
+        if delegate.isSpeaking {
+            let stop = NSMenuItem(title: "Stop Reading", action: #selector(stopSpeakingAction), keyEquivalent: "")
+            stop.target = self
+            menu.addItem(stop)
+        }
+
         // Model submenu
         let modelItem = NSMenuItem(title: "Model", action: nil, keyEquivalent: "")
         let modelMenu = NSMenu()
@@ -216,6 +250,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func speakAction() { delegate?.speakLastTranscript() }
     @objc private func downloadAction() { delegate?.startModelDownload() }
     @objc private func updateAction() { delegate?.openUpdatePage() }
+    @objc private func toggleReadSelectionAction() { delegate?.toggleReadSelection() }
+    @objc private func stopSpeakingAction() { delegate?.stopSpeaking() }
+    @objc private func ocrAction() { delegate?.startDocumentOCR() }
 
     @objc private func selectModelAction(_ sender: NSMenuItem) {
         guard

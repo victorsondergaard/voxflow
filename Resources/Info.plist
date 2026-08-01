@@ -26,6 +26,24 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>VoxFlow records your voice while you hold the dictation hotkey, transcribes it entirely on this Mac, and types the text for you. Audio never leaves your computer.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Read Aloud with VoxFlow</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>readAloudService</string>
+			<key>NSPortName</key>
+			<string>VoxFlow</string>
+			<key>NSSendTypes</key>
+			<array>
+				<string>NSStringPboardType</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT License — VoxFlow contributors</string>
 </dict>
