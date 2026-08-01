@@ -107,6 +107,7 @@ final class Settings {
         static let cleanup = "cleanupEnabled"
         static let assist = "assistModeEnabled"
         static let readBack = "readBackEnabled"
+        static let readSelection = "readSelectionEnabled"
     }
 
     var hotkey: Hotkey {
@@ -146,6 +147,16 @@ final class Settings {
     var readBackEnabled: Bool {
         get { defaults.bool(forKey: Key.readBack) }
         set { defaults.set(newValue, forKey: Key.readBack) }
+    }
+
+    /// Read any selected text aloud via ⌃⌥R or the right-click Services menu.
+    /// ON by default — it only acts when explicitly triggered.
+    var readSelectionEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.readSelection) == nil { return true }
+            return defaults.bool(forKey: Key.readSelection)
+        }
+        set { defaults.set(newValue, forKey: Key.readSelection) }
     }
 
     static let llmDownloadURL = URL(string:
