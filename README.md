@@ -50,9 +50,11 @@ VoxFlow was built with neurodivergent writers in mind:
 
 **AI Cleanup** (on-device LLM: removes "um"s, fixes punctuation, app-aware formatting; if it ever fails or takes >20 s, your raw words are inserted instead — you never lose what you said) · **Dyslexia & ADHD Assist** · **Read Back After Insert** · **Model** picker · **Hotkey** (Right ⌥ / Fn / Right ⌘) · **Launch at Login** · last transcript (click to copy) · **Download models…** · **Permissions help…**
 
-## Updating
+## Updating (one click) — and reverting
 
-VoxFlow checks GitHub once a day for a new version. When one exists, the menu bar menu shows **"Update available — Download…"** — click it, grab the new zip, and drag the app to Applications again. That's it.
+VoxFlow checks GitHub once a day. When a new version exists, the menu shows **"Update available — Install…"**: one click downloads it, swaps the app and relaunches. Nothing else to do.
+
+Want an older version back? Every release stays downloadable forever on the [Releases page](../../releases) — install any `VoxFlow.app.zip` over the current one. [CHANGELOG.md](CHANGELOG.md) documents what changed in every version so you know exactly where to go back to.
 
 ## Privacy
 

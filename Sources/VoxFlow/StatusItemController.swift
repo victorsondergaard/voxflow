@@ -19,6 +19,7 @@ protocol StatusMenuDelegate: AnyObject {
     var downloadStatus: String? { get }
     var modelsAreMissing: Bool { get }
     var updateAvailable: String? { get }
+    var updateStatus: String? { get }
     var readSelectionEnabled: Bool { get }
     var isSpeaking: Bool { get }
     var ocrStatus: String? { get }
@@ -34,7 +35,7 @@ protocol StatusMenuDelegate: AnyObject {
     func showPermissionsHelp()
     func showSetupHelp()
     func copyLastTranscript()
-    func openUpdatePage()
+    func installUpdate()
     func toggleReadSelection()
     func stopSpeaking()
     func startDocumentOCR()
@@ -95,10 +96,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         guard let delegate = delegate else { return }
 
         // One-click update when a newer release exists
-        if let tag = delegate.updateAvailable {
-            let item = NSMenuItem(title: "Update available (\(tag)) — Download…",
+        if let status = delegate.updateStatus {
+            let item = NSMenuItem(title: status, action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            menu.addItem(item)
+            menu.addItem(.separator())
+        } else if let tag = delegate.updateAvailable {
+            let item = NSMenuItem(title: "Update available (\(tag)) — Install…",
                                   action: #selector(updateAction), keyEquivalent: "")
             item.target = self
+            item.toolTip = "Downloads, installs and relaunches VoxFlow automatically."
             menu.addItem(item)
             menu.addItem(.separator())
         }
@@ -249,7 +256,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     @objc private func toggleReadBackAction() { delegate?.toggleReadBack() }
     @objc private func speakAction() { delegate?.speakLastTranscript() }
     @objc private func downloadAction() { delegate?.startModelDownload() }
-    @objc private func updateAction() { delegate?.openUpdatePage() }
+    @objc private func updateAction() { delegate?.installUpdate() }
     @objc private func toggleReadSelectionAction() { delegate?.toggleReadSelection() }
     @objc private func stopSpeakingAction() { delegate?.stopSpeaking() }
     @objc private func ocrAction() { delegate?.startDocumentOCR() }
