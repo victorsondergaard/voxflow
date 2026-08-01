@@ -15,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private let speech = AVSpeechSynthesizer()
     private let hud = HUDController()
     private let updater = UpdateChecker()
+    private let selectionReader = SelectionReader()
 
     private var state: DictationState = .idle
     private var downloadStatusText: String?
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private var errorMessage: String?
     private var hasTranscribedOnce = false
     private var updateAvailableTag: String?
+    private var ocrStatusText: String?
     private(set) var lastTranscriptValue: String?
 
     private static let minHoldSeconds: TimeInterval = 0.15 // SPEC R5
@@ -67,6 +69,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         }
         updater.start()
 
+        // Read-selection-aloud: ⌃⌥R anywhere + "Read Aloud with VoxFlow" in
+        // the right-click Services menu. Triggering while speaking stops it.
+        selectionReader.isEnabled = { [weak self] in
+            self?.settings.readSelectionEnabled ?? false
+        }
+        selectionReader.stopIfSpeaking = { [weak self] in
+            guard let self = self, self.speech.isSpeaking else { return false }
+            self.speech.stopSpeaking(at: .immediate)
+            return true
+        }
+        selectionReader.onText = { [weak self] text in
+            self?.speak(text)
+        }
+        selectionReader.start()
+        NSApp.servicesProvider = selectionReader
+        NSUpdateDynamicServices()
+
         ensureAccessibilityPermission()
         startHotkeyMonitoring()
         ServerManager.killStaleChildren() // from a previous crash/force-quit (SPEC R7)
@@ -81,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         hotkeyMonitor.stop()
+        selectionReader.stop()
         servers.stopAll() // no orphan child processes (SPEC R7)
     }
 
@@ -326,6 +346,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     var setupProblems: [String] { settings.setupProblems() }
     var currentError: String? { errorMessage }
     var updateAvailable: String? { updateAvailableTag }
+    var readSelectionEnabled: Bool { settings.readSelectionEnabled }
+    var isSpeaking: Bool { speech.isSpeaking }
+    var ocrStatus: String? { ocrStatusText }
 
     var launchAtLoginEnabled: Bool {
         SMAppService.mainApp.status == .enabled
@@ -356,6 +379,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
 
     func toggleReadBack() {
         settings.readBackEnabled.toggle()
+    }
+
+    func toggleReadSelection() {
+        settings.readSelectionEnabled.toggle()
+    }
+
+    func stopSpeaking() {
+        if speech.isSpeaking {
+            speech.stopSpeaking(at: .immediate)
+        }
+    }
+
+    func startDocumentOCR() {
+        guard ocrStatusText == nil else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedFileTypes = OCRService.supportedExtensions
+        panel.message = "Choose a PDF or image — VoxFlow will extract the text (on this Mac only), copy it to the clipboard, and read it aloud."
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { [weak self] response in
+            guard let self = self, response == .OK, let url = panel.url else { return }
+            self.ocrStatusText = "Preparing OCR…"
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    let text = try OCRService.extractText(from: url) { status in
+                        DispatchQueue.main.async { self.ocrStatusText = status }
+                    }
+                    DispatchQueue.main.async {
+                        self.ocrStatusText = nil
+                        let pasteboard = NSPasteboard.general
+                        pasteboard.clearContents()
+                        pasteboard.setString(text, forType: .string)
+                        self.lastTranscriptValue = text
+                        self.speak(text)
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.ocrStatusText = nil
+                        self.showAlert(title: "OCR failed", text: error.localizedDescription)
+                    }
+                }
+            }
+        }
     }
 
     func speakLastTranscript() {
