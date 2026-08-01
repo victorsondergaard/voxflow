@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private let hud = HUDController()
     private let updater = UpdateChecker()
     private let selectionReader = SelectionReader()
+    private let selfUpdater = SelfUpdater()
 
     private var state: DictationState = .idle
     private var downloadStatusText: String?
@@ -27,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     private var hasTranscribedOnce = false
     private var updateAvailableTag: String?
     private var ocrStatusText: String?
+    private var updateStatusText: String?
     private(set) var lastTranscriptValue: String?
 
     private static let minHoldSeconds: TimeInterval = 0.15 // SPEC R5
@@ -68,6 +70,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
             self?.updateAvailableTag = tag
         }
         updater.start()
+
+        selfUpdater.onStatus = { [weak self] status in
+            self?.updateStatusText = status
+        }
+        selfUpdater.onError = { [weak self] message in
+            self?.showAlert(title: "Update failed",
+                            text: message + "\n\nYou can always download any version manually from the Releases page.")
+            NSWorkspace.shared.open(UpdateChecker.releasesPage)
+        }
 
         // Read-selection-aloud: ⌃⌥R anywhere + "Read Aloud with VoxFlow" in
         // the right-click Services menu. Triggering while speaking stops it.
@@ -346,6 +357,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
     var setupProblems: [String] { settings.setupProblems() }
     var currentError: String? { errorMessage }
     var updateAvailable: String? { updateAvailableTag }
+    var updateStatus: String? { updateStatusText }
     var readSelectionEnabled: Bool { settings.readSelectionEnabled }
     var isSpeaking: Bool { speech.isSpeaking }
     var ocrStatus: String? { ocrStatusText }
@@ -504,8 +516,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, StatusMenuDelegate {
         )
     }
 
-    func openUpdatePage() {
-        NSWorkspace.shared.open(UpdateChecker.releasesPage)
+    func installUpdate() {
+        selfUpdater.installLatest()
     }
 
     func copyLastTranscript() {
